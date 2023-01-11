@@ -1,20 +1,12 @@
 import './App.css';
 import {createEditor} from 'slate'
-//import { Slate, Editable, withReact } from 'slate-react'
-import { Editor, Transforms, Text } from 'slate'
+import { Editor, Transforms, Descendant,
+  Element as SlateElement, } from 'slate'
 import React, {
-  useState,
-  useCallback,useMemo
+  useCallback, useMemo,
 } from "react"
-//import React, { useCallback, useMemo } from 'react'
-import isHotkey from 'is-hotkey'
+import isHotkey from 'is-hotkey';
 import { Editable, withReact, useSlate, Slate } from 'slate-react'
-import {
-  //Transforms,
-  //createEditor,
-  //Descendant,
-  Element as SlateElement,
-} from 'slate'
 import { withHistory } from 'slate-history'
 
 import { Button, Icon, Toolbar } from './components.tsx';
@@ -25,10 +17,61 @@ const HOTKEYS = {
   'mod+u': 'underline',
   'mod+`': 'code',
 }
+/*const DefaultElement = props => {
+  return <p {...props.attributes}>{props.children}</p>
+}
+const CodeElement = props => {
+  return (
+    <pre {...props.attributes}>
+      <code>{props.children}</code>
+    </pre>
+  )
+}*/
 
 const LIST_TYPES = ['numbered-list', 'bulleted-list']
 const TEXT_ALIGN_TYPES = ['left', 'center', 'right', 'justify']
 
+const ReactApp = () => {
+  const renderElement = useCallback(props => <Element {...props} />, [])
+  const renderLeaf = useCallback(props => <Leaf {...props} />, [])
+  const editor = useMemo(() => withHistory(withReact(createEditor())), [])
+
+  return (
+    <Slate editor={editor} value={initialValue}>
+      <Toolbar>
+        <MarkButton format="bold" icon="format_bold" />
+        <MarkButton format="italic" icon="format_italic" />
+        <MarkButton format="underline" icon="format_underlined" />
+        <MarkButton format="code" icon="code" />
+        <BlockButton format="heading-one" icon="looks_one" />
+        <BlockButton format="heading-two" icon="looks_two" />
+        <BlockButton format="block-quote" icon="format_quote" />
+        <BlockButton format="numbered-list" icon="format_list_numbered" />
+        <BlockButton format="bulleted-list" icon="format_list_bulleted" />
+        <BlockButton format="left" icon="format_align_left" />
+        <BlockButton format="center" icon="format_align_center" />
+        <BlockButton format="right" icon="format_align_right" />
+        <BlockButton format="justify" icon="format_align_justify" />
+      </Toolbar>
+      <Editable
+        renderElement={renderElement}
+        renderLeaf={renderLeaf}
+        placeholder="Enter some rich text…"
+        spellCheck
+        autoFocus
+        onKeyDown={event => {
+          for (const hotkey in HOTKEYS) {
+            if (isHotkey(hotkey, event)) {
+              event.preventDefault()
+              const mark = HOTKEYS[hotkey]
+              toggleMark(editor, mark)
+            }
+          }
+        }}
+      />
+    </Slate>
+  )
+}
 
 
 const toggleBlock = (editor, format) => {
@@ -57,12 +100,13 @@ const toggleBlock = (editor, format) => {
       type: isActive ? 'paragraph' : isList ? 'list-item' : format,
     }
   }
-  //Transforms.setNodes<SlateElement>(editor, newProperties)
+  Transforms.setNodes(editor, newProperties)
 
   if (!isActive && isList) {
     const block = { type: format, children: [] }
     Transforms.wrapNodes(editor, block)
   }
+
 }
 
 const toggleMark = (editor, format) => {
@@ -237,123 +281,4 @@ const initialValue: Descendant[] = [
   },
 ]
 
-const DefaultElement = props => {
-  return <p {...props.attributes}>{props.children}</p>
-}
-const CodeElement = props => {
-  return (
-    <pre {...props.attributes}>
-      <code>{props.children}</code>
-    </pre>
-  )
-}
-
-
-const App = () => {
-  const [editor] = useState(() => withReact(createEditor()))
-
-  const renderElement = useCallback(props => {
-    switch (props.element.type) {
-      case 'code':
-        return <CodeElement {...props} />
-      default:
-        return <DefaultElement {...props} />
-    }
-  }, [])
-
-  // Define a leaf rendering function that is memoized with `useCallback`.
-  const renderLeaf = useCallback(props => {
-    console.log(props)
-    return <Leaf {...props} />
-  }, [])
-
-  return (
-    <Slate editor={editor} value={initialValue} >
-      <Toolbar>
-        <MarkButton format="bold" icon="format_bold"/>
-        <MarkButton format="italic" icon="format_italic" />
-        <MarkButton format="underline" icon="format_underlined" />
-        <MarkButton format="code" icon="code" />
-        <BlockButton format="heading-one" icon="looks_one" />
-        <BlockButton format="heading-two" icon="looks_two" />
-        <BlockButton format="block-quote" icon="format_quote" />
-        <BlockButton format="numbered-list" icon="format_list_numbered" />
-        <BlockButton format="bulleted-list" icon="format_list_bulleted" />
-        <BlockButton format="left" icon="format_align_left" />
-        <BlockButton format="center" icon="format_align_center" />
-        <BlockButton format="right" icon="format_align_right" />
-        <BlockButton format="justify" icon="format_align_justify" />
-      </Toolbar>
-      <Editable
-        renderElement={renderElement}
-        // Pass in the `renderLeaf` function.
-        renderLeaf={renderLeaf}
-        onKeyDown={event => {
-          if (!event.ctrlKey) {
-            return
-          }
-
-          switch (event.key) {
-            case '`': {
-              event.preventDefault()
-              const [match] = Editor.nodes(editor, {
-                match: n => n.type === 'code',
-              })
-              Transforms.setNodes(
-                editor,
-                { type: match ? null : 'code' },
-                { match: n => Editor.isBlock(editor, n) }
-              )
-              break
-            }
-
-            case 'b': {
-              console.log(Text)
-              event.preventDefault()
-              Transforms.setNodes(
-                editor,
-                { bold: true },
-                { match: n => Text.isText(n), split: true }
-              )
-              break
-            }
-
-            case 'i': {
-              event.preventDefault()
-              Transforms.setNodes(
-                editor,
-                { italic: true },
-                { match: n => Text.isText(n), split: true }
-              )
-              break
-            }
-
-            case 'u': {
-              event.preventDefault()
-              Transforms.setNodes(
-                editor,
-                { underline: true },
-                { match: n => Text.isText(n), split: true }
-              )
-              break
-            }
-
-            default: {
-              /*console.log(Text)
-              event.preventDefault()
-              Transforms.setNodes(
-                editor,
-                { bold: true },
-                { match: n => Text.isText(n), split: true }
-              )*/
-              break
-            }
-          }
-        }}
-      />
-    </Slate>
-  )
-}
-
-
-export default App;
+export default ReactApp;
